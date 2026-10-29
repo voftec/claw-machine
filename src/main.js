@@ -18,9 +18,9 @@ scene.fog = new THREE.Fog(0x141831, 18, 40);
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
-const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-camera.position.set(0, 4.6, 11.5);
-camera.lookAt(0, 2.4, 0);
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+camera.position.set(0, 4.4, 15.2);
+camera.lookAt(0, 4.1, -0.4);
 
 // ---------- lights ----------
 scene.add(new THREE.HemisphereLight(0xbcd4ff, 0x3a2a55, 0.9));
@@ -38,22 +38,32 @@ const marquee = new THREE.PointLight(0xff4fd8, 12, 14, 1.8);
 marquee.position.set(0, 5.6, 3.2);
 scene.add(marquee);
 
-const innerGlow = new THREE.PointLight(0x66ccff, 14, 12, 1.8);
+const innerGlow = new THREE.PointLight(0x66ccff, 10, 12, 1.8);
 innerGlow.position.set(0, 4.2, 0.5);
 scene.add(innerGlow);
 
-const fill = new THREE.PointLight(0xffd9a0, 10, 12, 2);
+const fill = new THREE.PointLight(0xffd9a0, 8, 12, 2);
 fill.position.set(-3, 3, 2.5);
 scene.add(fill);
+
+// spotlight onto the toy pile
+const spot = new THREE.SpotLight(0xffffff, 60, 20, Math.PI / 5, 0.45, 1.4);
+spot.position.set(0, 7.7, 0.8);
+spot.target.position.set(0, 1, 0);
+spot.castShadow = true;
+spot.shadow.mapSize.set(1024, 1024);
+spot.shadow.bias = -0.0004;
+scene.add(spot, spot.target);
 
 // ---------- materials ----------
 const M = {
   metal: new THREE.MeshStandardMaterial({ color: 0x9aa7b8, metalness: 0.9, roughness: 0.28 }),
   darkMetal: new THREE.MeshStandardMaterial({ color: 0x2a2f3d, metalness: 0.75, roughness: 0.4 }),
-  pink: new THREE.MeshStandardMaterial({ color: 0xff2d78, metalness: 0.15, roughness: 0.35 }),
+  pink: new THREE.MeshStandardMaterial({ color: 0xd4145a, metalness: 0.35, roughness: 0.3 }),
+  chrome: new THREE.MeshStandardMaterial({ color: 0xf0f0f0, metalness: 1, roughness: 0.12 }),
   glass: new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0, roughness: 0.05, transmission: 1, thickness: 0.25, transparent: true, opacity: 0.22 }),
-  floor: new THREE.MeshStandardMaterial({ color: 0x342a5e, roughness: 0.55, metalness: 0.2 }),
-  back: new THREE.MeshStandardMaterial({ color: 0x3d2b6e, roughness: 0.7, emissive: 0x1a0f38, emissiveIntensity: 0.8 }),
+  floor: new THREE.MeshStandardMaterial({ color: 0x120e2c, roughness: 0.22, metalness: 0.4 }),
+  back: new THREE.MeshStandardMaterial({ color: 0x181040, roughness: 0.6, metalness: 0.3, emissive: 0x0c0624, emissiveIntensity: 0.7 }),
   neon: new THREE.MeshStandardMaterial({ color: 0x30f6ff, emissive: 0x30f6ff, emissiveIntensity: 2.4 }),
   cable: new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 }),
   claw: new THREE.MeshStandardMaterial({ color: 0xd8dee9, metalness: 0.95, roughness: 0.18 }),
@@ -77,7 +87,43 @@ for (const sx of [-1, 1]) for (const sz of [-1, 1])
   box(0.45, H, 0.45, M.pink, sx * W / 2, H / 2, sz * D / 2);
 box(W + 0.6, 0.7, D + 0.6, M.darkMetal, 0, 0.35, 0);          // base
 box(W + 0.6, 0.9, D + 0.6, M.pink, 0, H + 0.2, 0);           // roof
-box(W + 0.7, 0.35, D + 0.7, M.darkMetal, 0, H + 0.75, 0);    // marquee base
+
+// marquee sign: canvas texture with glowing CLAW text + bulbs
+const mc = document.createElement('canvas'); mc.width = 512; mc.height = 160;
+const mctx = mc.getContext('2d');
+const grad = mctx.createLinearGradient(0, 0, 0, 160);
+grad.addColorStop(0, '#2b0f4f'); grad.addColorStop(1, '#12082a');
+mctx.fillStyle = grad; mctx.fillRect(0, 0, 512, 160);
+mctx.font = '900 92px system-ui, sans-serif';
+mctx.textAlign = 'center'; mctx.textBaseline = 'middle';
+mctx.shadowColor = '#ff2d96'; mctx.shadowBlur = 30;
+mctx.fillStyle = '#ffd4ec';
+mctx.fillText('★ CLAW ★', 256, 84);
+const mTex = new THREE.CanvasTexture(mc);
+mTex.colorSpace = THREE.SRGBColorSpace;
+const sign = new THREE.Mesh(
+  new THREE.PlaneGeometry(W - 1, 1.0),
+  new THREE.MeshStandardMaterial({ map: mTex, emissive: 0xffffff, emissiveMap: mTex, emissiveIntensity: 1.0, roughness: 0.4 })
+);
+sign.position.set(0, H + 0.2, D / 2 + 0.32); cabinet.add(sign);
+// bulbs along the sign
+const bulbGeo = new THREE.SphereGeometry(0.09, 10, 8);
+const bulbMat = new THREE.MeshStandardMaterial({ color: 0xfff3b0, emissive: 0xffc63f, emissiveIntensity: 3 });
+for (let i = 0; i <= 12; i++) {
+  const b = new THREE.Mesh(bulbGeo, bulbMat);
+  b.position.set(-W / 2 + 0.5 + i * (W - 1) / 12, H + 0.85, D / 2 + 0.35);
+  cabinet.add(b);
+}
+box(W + 0.7, 0.35, D + 0.7, M.darkMetal, 0, H + 0.85, 0);    // top cap
+
+// control panel with joystick + button
+box(2.4, 0.6, 0.9, M.darkMetal, 0, 0.95, D / 2 + 0.4);
+const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.5, 10), M.chrome);
+stick.position.set(-0.6, 1.45, D / 2 + 0.4); cabinet.add(stick);
+const ball = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 12), new THREE.MeshStandardMaterial({ color: 0xff2244, roughness: 0.3 }));
+ball.position.set(-0.6, 1.72, D / 2 + 0.4); cabinet.add(ball);
+const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.12, 16), new THREE.MeshStandardMaterial({ color: 0x30f6ff, emissive: 0x30f6ff, emissiveIntensity: 1.2, roughness: 0.3 }));
+btn.position.set(0.6, 1.3, D / 2 + 0.4); cabinet.add(btn);
 // interior floor
 const floor = new THREE.Mesh(new THREE.BoxGeometry(W, 0.15, D), M.floor);
 floor.position.y = 0.78; floor.receiveShadow = true;
@@ -103,41 +149,56 @@ box(1.6, 0.5, 1.6, M.darkMetal, W / 2 - 1.2, 1.0, D / 2 - 1.2);
 
 // ---------- toys ----------
 const toys = [];
-const toyColors = [0xff5252, 0xffb142, 0x34ace0, 0x2ed573, 0xa55eea, 0xff7f50, 0x70a1ff, 0xf368e0];
+const toyColors = [0xff3b3b, 0xff9500, 0x00c2ff, 0x2ee66b, 0x9b30ff, 0xff5e3a, 0x3d7bff, 0xff2fb3, 0xffe23f, 0x00e0b8];
 const rand = (a, b) => a + Math.random() * (b - a);
 
 function makeToy(i) {
   const g = new THREE.Group();
   const color = toyColors[i % toyColors.length];
-  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0.05 });
-  const kind = i % 3;
-  if (kind === 0) { // ball
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.05 });
+  const belly = new THREE.MeshStandardMaterial({ color: new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.55), roughness: 0.65 });
+  const kind = i % 4;
+  if (kind === 0) { // shiny ball
     const r = rand(0.28, 0.42);
-    g.add(new THREE.Mesh(new THREE.SphereGeometry(r, 24, 18), mat));
+    g.add(new THREE.Mesh(new THREE.SphereGeometry(r, 24, 18), new THREE.MeshStandardMaterial({ color, roughness: 0.25, metalness: 0.3 })));
     g.userData.grabR = r; g.userData.weight = r;
-  } else if (kind === 1) { // plush blob: body + ears
-    const r = rand(0.26, 0.36);
+  } else if (kind === 1) { // plushie: body + belly + ears
+    const r = rand(0.26, 0.38);
     const body = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 18), mat);
-    body.scale.y = 1.15; g.add(body);
-    const earGeo = new THREE.SphereGeometry(r * 0.35, 12, 10);
+    body.scale.y = 1.12; g.add(body);
+    const tum = new THREE.Mesh(new THREE.SphereGeometry(r * 0.62, 16, 12), belly);
+    tum.position.set(0, -r * 0.18, r * 0.55); tum.scale.set(0.85, 0.95, 0.6); g.add(tum);
+    const earGeo = new THREE.SphereGeometry(r * 0.34, 12, 10);
     for (const s of [-1, 1]) {
       const ear = new THREE.Mesh(earGeo, mat);
       ear.position.set(s * r * 0.55, r * 0.95, 0); g.add(ear);
     }
     g.userData.grabR = r; g.userData.weight = r * 1.3;
-  } else { // cube-y prize
+  } else if (kind === 2) { // capsule pill toy
+    const r = rand(0.2, 0.3);
+    const cap = new THREE.Mesh(new THREE.CapsuleGeometry(r, rand(0.25, 0.4), 8, 16), mat);
+    cap.rotation.z = Math.PI / 2; cap.rotation.y = rand(0, Math.PI); g.add(cap);
+    g.userData.grabR = r * 1.1; g.userData.weight = r * 1.6;
+  } else { // gift box
     const s = rand(0.4, 0.55);
     const m = new THREE.Mesh(new THREE.BoxGeometry(s, s, s), mat);
-    m.rotation.y = rand(0, Math.PI); g.add(m);
+    const ribbon = new THREE.Mesh(new THREE.BoxGeometry(s * 1.02, s * 0.2, s * 1.02), belly);
+    m.rotation.y = rand(0, Math.PI); g.add(m, ribbon);
+    ribbon.rotation.y = m.rotation.y;
     g.userData.grabR = s * 0.6; g.userData.weight = s * 0.8;
   }
-  const layer = i % 2 ? 0.55 : 0;
-  g.position.set(rand(-W / 2 + 0.9, W / 2 - 0.9), 1.05 + layer, rand(-D / 2 + 0.9, D / 2 - 0.9));
+  // mound pile: denser toward center, stacked in loose layers
+  const ang = rand(0, Math.PI * 2), rad = Math.pow(Math.random(), 0.6);
+  const px = Math.cos(ang) * rad * (W / 2 - 1.1);
+  const pz = Math.sin(ang) * rad * (D / 2 - 1.1);
+  const py = 1.1 + Math.max(0, (1 - rad)) * rand(0, 0.9) + (i % 3 === 0 ? rand(0.4, 0.8) : 0);
+  g.position.set(px, py, pz);
+  g.rotation.y = rand(0, Math.PI * 2);
   g.children.forEach(c => { c.castShadow = c.receiveShadow = true; });
   scene.add(g);
   toys.push(g);
 }
-for (let i = 0; i < 18; i++) makeToy(i);
+for (let i = 0; i < 30; i++) makeToy(i);
 
 // ---------- claw assembly ----------
 const carriage = new THREE.Group();          // moves XZ
