@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Claw Machine</title>
+<style>
+  * { margin:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; overflow:hidden; background:#0b0e1a; font-family:system-ui,sans-serif; }
+  #game { position:fixed; inset:0; width:100%; height:100%; touch-action:none; }
+  #hud { position:fixed; top:10px; left:0; right:0; display:flex; justify-content:space-between; padding:0 14px; pointer-events:none; color:#fff; }
+  #msg { background:rgba(10,10,25,.65); padding:8px 14px; border-radius:12px; font-size:14px; font-weight:600; }
+  #prizeBox { background:rgba(10,10,25,.65); padding:8px 14px; border-radius:12px; font-size:14px; font-weight:600; }
+  #pad { position:fixed; bottom:16px; left:14px; display:grid; grid-template-columns:repeat(3,58px); grid-template-rows:repeat(3,58px); gap:6px; }
+  #pad button, #btnDrop {
+    border:0; border-radius:14px; font-size:22px; font-weight:800; color:#fff;
+    background:rgba(255,255,255,.12); backdrop-filter:blur(6px);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);
+  }
+  #pad button:active, #btnDrop:active { background:rgba(255,255,255,.3); }
+  #btnU { grid-area:1/2; } #btnL { grid-area:2/1; } #btnD { grid-area:3/2; } #btnR { grid-area:2/3; }
+  #btnDrop {
+    position:fixed; bottom:16px; right:14px; width:96px; height:96px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #ff5c9e, #c81d63); font-size:15px; letter-spacing:.5px;
+    box-shadow:0 6px 20px rgba(255,45,120,.45), inset 0 -4px 0 rgba(0,0,0,.25);
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud"><div id="msg"></div><div id="prizeBox">🏆 <span id="prizes">0</span></div></div>
+<div id="pad">
+  <button id="btnU">▲</button><button id="btnL">◀</button>
+  <button id="btnD">▼</button><button id="btnR">▶</button>
+</div>
+<button id="btnDrop">DROP</button>
+<script type="module" src="./bundle.js"></script>
+</body>
+</html>
