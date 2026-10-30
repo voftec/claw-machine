@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 
 // ---------- renderer / scene ----------
 const canvas = document.getElementById('game');
@@ -19,14 +21,14 @@ const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
 const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
-camera.position.set(2.6, 6.8, 18.4);
-camera.lookAt(0, 5.3, -0.2);
+camera.position.set(0.8, 6.6, 15.4);
+camera.lookAt(0, 5.6, -0.2);
 
 // ---------- lights ----------
-scene.add(new THREE.HemisphereLight(0x3550a0, 0x0d0a20, 0.4)); // relleno tenue frío
+scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x30302a, 0.8)); // relleno estudio
 
-const key = new THREE.DirectionalLight(0xbfd6ff, 1.6);   // luz fría de noche
-key.position.set(6, 10, 7);
+const key = new THREE.DirectionalLight(0xfff1d6, 2.2);   // luz cálida de salón
+key.position.set(6, 12, 8);
 key.castShadow = true;
 key.shadow.mapSize.set(2048, 2048);
 key.shadow.camera.left = key.shadow.camera.bottom = -9;
@@ -34,22 +36,22 @@ key.shadow.camera.right = key.shadow.camera.top = 9;
 key.shadow.bias = -0.0004;
 scene.add(key);
 
-const marquee = new THREE.PointLight(0xff2fd0, 20, 18, 1.8);   // neón rosa
-marquee.position.set(0, 9.9, 4.2);
+const marquee = new THREE.PointLight(0xffc23f, 14, 12, 1.8);   // glow cálido del cartel
+marquee.position.set(0, 10.4, 2.6);
 scene.add(marquee);
 
-const innerGlow = new THREE.PointLight(0x22e6ff, 18, 13, 1.8); // neón cyan interior
-innerGlow.position.set(0, 6.2, 0.5);
+const innerGlow = new THREE.PointLight(0xffffff, 10, 8, 1.8);  // luz interior de la cabina
+innerGlow.position.set(0, 6.6, 0);
 scene.add(innerGlow);
 
-const fill = new THREE.PointLight(0xff2fd0, 9, 14, 2);          // rebote rosa
-fill.position.set(-3, 4.5, 2.5);
+const fill = new THREE.PointLight(0xffd9a0, 6, 12, 2);          // rebote cálido
+fill.position.set(-3, 5, 3);
 scene.add(fill);
 
-// spotlight frío sobre la pila
-const spot = new THREE.SpotLight(0xcfe8ff, 55, 20, Math.PI / 5, 0.45, 1.4);
-spot.position.set(0, 8.1, 0.8);
-spot.target.position.set(0, 3.6, 0);
+// spotlight sobre la pila de premios
+const spot = new THREE.SpotLight(0xfff6e0, 40, 14, Math.PI / 5, 0.45, 1.4);
+spot.position.set(0, 8.5, 0.6);
+spot.target.position.set(0, 4.5, 0);
 spot.castShadow = true;
 spot.shadow.mapSize.set(1024, 1024);
 spot.shadow.bias = -0.0004;
@@ -112,161 +114,51 @@ const M = {
   rubber: new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.95, metalness: 0 }),        // ventosas de goma
 };
 
-// ---------- cabinet ----------
-// estructura tipo foto: cuerpo sólido abajo, cabina de vidrio arriba, corona inclinada
-const cabinet = new THREE.Group();
-scene.add(cabinet);
-const W = 10, D = 7, H = 10;
-const BASE_H = 3.4;              // tope del cuerpo sólido = piso de la cabina
-const GLASS_TOP = H - 1.6;       // tope del vidrio
+// ---------- máquina real (modelo GLB escaneado) ----------
+const W = 4.6, D = 4.6;                    // zona jugable dentro de la cabina
+const CABIN_FLOOR = 4.45;                  // bandeja metálica interior del modelo
+const CABIN_CEIL = 8.9;                    // techo de la cabina de vidrio
+const CHUTE = { x: 1.55, z: 1.55 };        // esquina donde suelta el premio
 
-function box(w, h, d, mat, x, y, z, rx = 0) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-  m.position.set(x, y, z);
-  m.rotation.x = rx;
-  m.castShadow = m.receiveShadow = true;
-  cabinet.add(m);
-  return m;
-}
+const dracoLoader = new DRACOLoader().setDecoderPath('draco/');
+const machine = (await new GLTFLoader().setDRACOLoader(dracoLoader).loadAsync('claw_machine.glb')).scene;
+machine.updateMatrixWorld(true);
 
-// zócalo + cuerpo inferior sólido negro
-box(W + 1.0, 0.5, D + 1.0, M.darkMetal, 0, 0.25, 0);
-box(W + 0.5, BASE_H, D + 0.5, M.pink, 0, 0.5 + BASE_H / 2, 0);
+// quitar la garra estática horneada en el modelo (la nuestra es animada con spring)
+machine.traverse(o => {
+  if (!o.isMesh || !o.geometry.index) return;
+  const pos = o.geometry.getAttribute('position');
+  const idx = o.geometry.getIndex().array;
+  const keep = new Uint32Array(idx.length);
+  let n = 0;
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  for (let i = 0; i < idx.length; i += 3) {
+    a.fromBufferAttribute(pos, idx[i]).applyMatrix4(o.matrixWorld);
+    b.fromBufferAttribute(pos, idx[i+1]).applyMatrix4(o.matrixWorld);
+    c.fromBufferAttribute(pos, idx[i+2]).applyMatrix4(o.matrixWorld);
+    const cx = (a.x+b.x+c.x)/3, cy = (a.y+b.y+c.y)/3, cz = (a.z+b.z+c.z)/3;
+    // garra: cuelga del centro del techo de la cabina (unidades del modelo)
+    if (Math.abs(cx) < 0.14 && Math.abs(cz) < 0.14 && cy > 0.42 && cy < 0.85) continue;
+    keep[n++] = idx[i]; keep[n++] = idx[i+1]; keep[n++] = idx[i+2];
+  }
+  o.geometry.setIndex(new THREE.BufferAttribute(keep.slice(0, n), 1));
+});
 
-// puerta PRIZE OUT en el frente del cuerpo inferior
-const pc = document.createElement('canvas'); pc.width = 256; pc.height = 160;
-const pcx = pc.getContext('2d');
-pcx.fillStyle = '#0a0a14'; pcx.fillRect(0, 0, 256, 160);
-pcx.strokeStyle = '#ff2fd0'; pcx.lineWidth = 5; pcx.shadowColor = '#ff2fd0'; pcx.shadowBlur = 16;
-pcx.strokeRect(8, 8, 240, 144);
-pcx.font = '900 30px system-ui, sans-serif'; pcx.textAlign = 'center';
-pcx.shadowColor = '#22e6ff'; pcx.shadowBlur = 14; pcx.fillStyle = '#d8faff';
-pcx.fillText('PRIZE OUT', 128, 46);
-pcx.shadowBlur = 0; pcx.fillStyle = '#14141f'; pcx.fillRect(28, 70, 200, 62);
-pcx.strokeStyle = '#ff2fd0'; pcx.strokeRect(28, 70, 200, 62);
-const pcTex = new THREE.CanvasTexture(pc); pcTex.colorSpace = THREE.SRGBColorSpace;
-const prizeDoor = new THREE.Mesh(
-  new THREE.PlaneGeometry(2.2, 1.4),
-  new THREE.MeshStandardMaterial({ map: pcTex, emissive: 0xffffff, emissiveMap: pcTex, emissiveIntensity: 0.9, roughness: 0.4 })
-);
-prizeDoor.position.set(2.6, 1.5, D / 2 + 0.28); cabinet.add(prizeDoor);
+const MACHINE_SCALE = 11.2;
+machine.scale.setScalar(MACHINE_SCALE);
+machine.traverse(o => {
+  if (o.isMesh) {
+    o.castShadow = o.receiveShadow = true;
+    if (o.material && 'envMapIntensity' in o.material) o.material.envMapIntensity = 0.55;
+  }
+});
+scene.add(machine);
 
-// panel de control inclinado sobre el cuerpo (joystick rosa + botón cyan + pantalla de precio)
-const deck = box(3.4, 0.18, 1.5, M.darkMetal, 0, BASE_H + 0.5, D / 2 + 0.9, -0.55);
-const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.6, 10), M.chrome);
-stick.position.set(-0.8, BASE_H + 1.0, D / 2 + 0.85); stick.rotation.x = -0.5; cabinet.add(stick);
-const ball = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 12), new THREE.MeshStandardMaterial({ color: 0xff2fb3, roughness: 0.25, emissive: 0x550033, emissiveIntensity: 0.4 }));
-ball.position.set(-0.8, BASE_H + 1.28, D / 2 + 1.0); cabinet.add(ball);
-const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.19, 0.13, 16), new THREE.MeshStandardMaterial({ color: 0x22e6ff, emissive: 0x22e6ff, emissiveIntensity: 1.4, roughness: 0.3 }));
-btn.position.set(0.7, BASE_H + 0.82, D / 2 + 1.0); btn.rotation.x = -0.5; cabinet.add(btn);
-// pantalla de precio en la cara del cuerpo
-const sc = document.createElement('canvas'); sc.width = 256; sc.height = 96;
-const scx = sc.getContext('2d');
-scx.fillStyle = '#050510'; scx.fillRect(0, 0, 256, 96);
-scx.font = '700 26px monospace'; scx.textAlign = 'center';
-scx.shadowColor = '#22e6ff'; scx.shadowBlur = 10; scx.fillStyle = '#aef4ff';
-scx.fillText('1 PLAY  $1.00', 128, 38);
-scx.shadowColor = '#ff2fd0'; scx.fillStyle = '#ffd8f2';
-scx.fillText('2 PLAY  $1.50', 128, 72);
-const scTex = new THREE.CanvasTexture(sc); scTex.colorSpace = THREE.SRGBColorSpace;
-const screen = new THREE.Mesh(
-  new THREE.PlaneGeometry(1.9, 0.72),
-  new THREE.MeshStandardMaterial({ map: scTex, emissive: 0xffffff, emissiveMap: scTex, emissiveIntensity: 1.1 })
-);
-screen.position.set(0, 1.9, D / 2 + 0.27); cabinet.add(screen);
-
-// cabina de vidrio (entre BASE_H y GLASS_TOP)
-const GH = GLASS_TOP - BASE_H, GY = BASE_H + GH / 2;
-// interior floor
-const floor = new THREE.Mesh(new THREE.BoxGeometry(W, 0.18, D), M.floor);
-floor.position.y = BASE_H + 0.1; floor.receiveShadow = true;
-cabinet.add(floor);
-// pared trasera con skyline nocturno
-const bc = document.createElement('canvas'); bc.width = 512; bc.height = 256;
-const bx = bc.getContext('2d');
-const bgrad = bx.createLinearGradient(0, 0, 0, 256);
-bgrad.addColorStop(0, '#0b1030'); bgrad.addColorStop(1, '#1a1038');
-bx.fillStyle = bgrad; bx.fillRect(0, 0, 512, 256);
-bx.fillStyle = '#0a0a18';
-let bxX = 0;
-while (bxX < 512) {
-  const bw = 20 + Math.random() * 55, bh = 60 + Math.random() * 150;
-  bx.fillRect(bxX, 256 - bh, bw, bh);
-  for (let wy = 256 - bh + 8; wy < 248; wy += 14)
-    for (let wx = bxX + 6; wx < bxX + bw - 6; wx += 12)
-      if (Math.random() < 0.4) {
-        bx.fillStyle = Math.random() < 0.5 ? 'rgba(255,47,208,0.85)' : 'rgba(34,230,255,0.85)';
-        bx.fillRect(wx, wy, 4, 6);
-        bx.fillStyle = '#0a0a18';
-      }
-  bxX += bw + 4;
-}
-const bTex = new THREE.CanvasTexture(bc); bTex.colorSpace = THREE.SRGBColorSpace;
-const backWall = new THREE.Mesh(
-  new THREE.BoxGeometry(W - 0.9, GH - 0.2, 0.12),
-  new THREE.MeshStandardMaterial({ map: bTex, emissive: 0xffffff, emissiveMap: bTex, emissiveIntensity: 0.5, roughness: 0.7 })
-);
-backWall.position.set(0, GY, -D / 2 - 0.02); backWall.receiveShadow = true; cabinet.add(backWall);
-
-// tubos de neón en todas las aristas de la cabina
-for (const s of [-1, 1]) {
-  box(0.09, GH, 0.09, M.neonPink, s * (W / 2 - 0.15), GY, D / 2 - 0.15);      // verticales front
-  box(0.09, GH, 0.09, M.neon, s * (W / 2 - 0.15), GY, -D / 2 + 0.15);        // verticales back
-}
-box(W - 0.6, 0.09, 0.09, M.neonPink, 0, GLASS_TOP - 0.1, D / 2 - 0.15);
-box(W - 0.6, 0.09, 0.09, M.neon, 0, GLASS_TOP - 0.1, -D / 2 + 0.15);
-box(0.09, 0.09, D - 0.6, M.neon, -W / 2 + 0.15, GLASS_TOP - 0.1, 0);
-box(0.09, 0.09, D - 0.6, M.neonPink, W / 2 - 0.15, GLASS_TOP - 0.1, 0);
-box(W - 0.6, 0.09, 0.09, M.neon, 0, BASE_H + 0.25, D / 2 - 0.15);
-box(W - 0.6, 0.09, 0.09, M.neonPink, 0, BASE_H + 0.25, -D / 2 + 0.15);
-
-// marco de la cabina + corona superior inclinada con el cartel
-box(W + 0.7, 0.55, D + 0.7, M.pink, 0, GLASS_TOP + 0.3, 0);            // cornisa
-box(W + 0.5, 1.7, D + 0.4, M.pink, 0, GLASS_TOP + 1.4, -0.15, -0.16);  // corona
-box(W + 0.9, 0.3, D + 0.9, M.darkMetal, 0, GLASS_TOP + 2.35, -0.35);   // remate
-
-// cartel DREAM CATCHER con osito, tipo pantalla neón
-const mc = document.createElement('canvas'); mc.width = 512; mc.height = 224;
-const mctx = mc.getContext('2d');
-mctx.fillStyle = '#05030f'; mctx.fillRect(0, 0, 512, 224);
-mctx.strokeStyle = '#ff2fd0'; mctx.lineWidth = 7; mctx.shadowColor = '#ff2fd0'; mctx.shadowBlur = 20;
-mctx.strokeRect(10, 10, 492, 204);
-// osito de neón a la izquierda
-mctx.lineWidth = 5; mctx.shadowColor = '#22e6ff'; mctx.strokeStyle = '#22e6ff';
-mctx.beginPath(); mctx.arc(72, 96, 26, 0, Math.PI * 2); mctx.stroke();
-mctx.beginPath(); mctx.arc(50, 66, 11, 0, Math.PI * 2); mctx.stroke();
-mctx.beginPath(); mctx.arc(94, 66, 11, 0, Math.PI * 2); mctx.stroke();
-mctx.beginPath(); mctx.arc(72, 158, 30, Math.PI, Math.PI * 2); mctx.stroke(); // panza arco
-mctx.beginPath(); mctx.arc(52, 180, 12, 0, Math.PI * 2); mctx.stroke();
-mctx.beginPath(); mctx.arc(92, 180, 12, 0, Math.PI * 2); mctx.stroke();
-mctx.font = '900 56px system-ui, sans-serif'; mctx.textAlign = 'center'; mctx.textBaseline = 'middle';
-mctx.shadowColor = '#ff2fd0'; mctx.shadowBlur = 24; mctx.fillStyle = '#ffd8f2';
-mctx.fillText('DREAM', 310, 78);
-mctx.shadowColor = '#22e6ff'; mctx.shadowBlur = 24; mctx.fillStyle = '#d8faff';
-mctx.fillText('CATCHER', 310, 148);
-const mTex = new THREE.CanvasTexture(mc); mTex.colorSpace = THREE.SRGBColorSpace;
-const sign = new THREE.Mesh(
-  new THREE.PlaneGeometry(W - 1.2, 1.9),
-  new THREE.MeshStandardMaterial({ map: mTex, emissive: 0xffffff, emissiveMap: mTex, emissiveIntensity: 1.05, roughness: 0.4 })
-);
-sign.position.set(0, GLASS_TOP + 1.42, D / 2 + 0.36); sign.rotation.x = -0.16; cabinet.add(sign);
-// neón en el perímetro de la corona
-box(W + 0.6, 0.08, 0.08, M.neonPink, 0, GLASS_TOP + 2.2, D / 2 + 0.25);
-for (const s of [-1, 1]) box(0.08, 1.7, 0.08, M.neonPink, s * (W / 2 + 0.2), GLASS_TOP + 1.35, D / 2 + 0.22);
-
-// glass panes
-const glassFront = new THREE.Mesh(new THREE.BoxGeometry(W - 0.9, GH - 0.2, 0.08), M.glass);
-glassFront.position.set(0, GY, D / 2 + 0.02); cabinet.add(glassFront);
-for (const s of [-1, 1]) {
-  const side = new THREE.Mesh(new THREE.BoxGeometry(0.08, GH - 0.2, D - 0.9), M.glass);
-  side.position.set(s * (W / 2 + 0.02), GY, 0); cabinet.add(side);
-}
-// rails the carriage rides on (X = left/right, Z = fwd/back)
-box(W - 0.8, 0.12, 0.3, M.metal, 0, GLASS_TOP - 0.45, -1.2);
-box(W - 0.8, 0.12, 0.3, M.metal, 0, GLASS_TOP - 0.45, 1.2);
-const crossRail = box(0.3, 0.12, 2.7, M.metal, 0, GLASS_TOP - 0.45, 0); // moves in X
-// prize chute inside (bajó al nivel del piso de cabina)
-box(1.6, 0.5, 1.6, M.darkMetal, W / 2 - 1.2, BASE_H + 0.35, D / 2 - 1.2);
+// riel superior decorativo dentro de la cabina (acompaña el movimiento X)
+const crossRail = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.08, 2.2), M.darkMetal);
+crossRail.position.y = CABIN_CEIL - 0.12;
+crossRail.castShadow = true;
+scene.add(crossRail);
 
 // ---------- toys ----------
 const toys = [];
@@ -308,11 +200,13 @@ function makeToy(i) {
     ribbon.rotation.y = m.rotation.y;
     g.userData.grabR = s * 0.6; g.userData.weight = s * 0.8;
   }
+  g.scale.setScalar(0.62);   // toys chicos para caber en la cabina del modelo
+  g.userData.grabR *= 0.62; g.userData.weight *= 0.62;
   // mound pile: denser toward center, stacked in loose layers
   const ang = rand(0, Math.PI * 2), rad = Math.pow(Math.random(), 0.6);
-  const px = Math.cos(ang) * rad * (W / 2 - 1.1);
-  const pz = Math.sin(ang) * rad * (D / 2 - 1.1);
-  const py = 3.65 + Math.max(0, (1 - rad)) * rand(0, 0.9) + (i % 3 === 0 ? rand(0.4, 0.8) : 0);
+  const px = Math.cos(ang) * rad * 1.55;
+  const pz = Math.sin(ang) * rad * 1.55;
+  const py = 4.58 + Math.max(0, (1 - rad)) * rand(0, 0.55) + (i % 3 === 0 ? rand(0.25, 0.5) : 0);
   g.position.set(px, py, pz);
   g.rotation.y = rand(0, Math.PI * 2);
   g.children.forEach(c => { c.castShadow = c.receiveShadow = true; });
@@ -323,15 +217,16 @@ for (let i = 0; i < 30; i++) makeToy(i);
 
 // ---------- claw assembly ----------
 const carriage = new THREE.Group();          // moves XZ
-carriage.position.y = GLASS_TOP - 0.45;
+carriage.position.y = CABIN_CEIL - 0.12;
 scene.add(carriage);
-const carBody = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.35, 0.9), M.metal); // partes móviles: otra rugosidad
+const carBody = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.3, 0.42), M.darkMetal); // parte móvil del riel
 carBody.castShadow = true; carriage.add(carBody);
 
 const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1, 8), M.cable);
 carriage.add(cable);
 
 const clawRoot = new THREE.Group();          // hangs from cable end
+clawRoot.scale.setScalar(0.62);              // garra a escala de la cabina
 carriage.add(clawRoot);
 // cabeza tipo imagen: domo metálico con collar y nudillos
 const head = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.3, 0.34, 20), M.claw);
@@ -397,14 +292,14 @@ function burstSparks(x, y, z) {
 // ---------- spring model ----------
 // cable length follows target with damped spring => overshoot/wobble
 const spring = { len: 0.9, vel: 0, target: 0.9, k: 90, damp: 7 };
-const HEAD_Y = GLASS_TOP - 0.45;
-const FLOOR_Y = BASE_H + 0.75;
+const HEAD_Y = CABIN_CEIL - 0.12;
+const FLOOR_Y = 4.95;                        // tope de la pila de toys
 
 let prongOpen = 0.55;      // 0 closed .. 1 open (applied angle base)
 let prongTarget = 0.55;
 
 // ---------- state machine ----------
-const MOVE = { minX: -W / 2 + 0.8, maxX: W / 2 - 0.8, minZ: -D / 2 + 0.8, maxZ: D / 2 - 0.8 };
+const MOVE = { minX: -1.55, maxX: 1.55, minZ: -1.45, maxZ: 1.45 };
 const SPEED = 4.2;
 let state = 'idle';        // idle | drop | grab | lift | carry | release | return
 let heldToy = null;
@@ -460,6 +355,7 @@ function ding() {
 function drop() {
   if (state !== 'idle') return;
   state = 'drop';
+  dropT = 0; dropFrom = spring.len; dropTo = HEAD_Y - FLOOR_Y;
   motorStart();
   prongTarget = 1;
   setMsg('¡Bajando!');
@@ -573,7 +469,7 @@ function tick() {
     }
   } else if (state === 'carry') {
     // auto-drive to chute
-    const tx = W / 2 - 1.2, tz = D / 2 - 1.2;
+    const tx = CHUTE.x, tz = CHUTE.z;
     const vx = tx - carriage.position.x, vz = tz - carriage.position.z;
     const dist = Math.hypot(vx, vz);
     if (dist > 0.05) {
@@ -588,7 +484,7 @@ function tick() {
     }
   } else if (state === 'release') {
     if (prongOpen > 0.9 && heldToy) {
-      heldToy.position.set(carriage.position.x, BASE_H + 0.9, carriage.position.z);
+      heldToy.position.set(carriage.position.x, CABIN_FLOOR + 0.4, carriage.position.z);
       heldToy.userData.falling = true;
       heldToy = null;
       state = 'idle'; prongTarget = 0.55; setMsg('Mové la garra y bajala');
@@ -602,7 +498,7 @@ function tick() {
   // simple fall for released toy
   for (const t of scene.children) if (t.userData && t.userData.falling) {
     t.position.y -= 6 * dt;
-    if (t.position.y < BASE_H + 0.55) t.userData.falling = false;
+    if (t.position.y < CABIN_FLOOR + 0.2) t.userData.falling = false;
   }
 
   // partículas
