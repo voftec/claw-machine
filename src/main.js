@@ -12,8 +12,8 @@ renderer.toneMappingExposure = 1.15;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x141831);
-scene.fog = new THREE.Fog(0x141831, 18, 40);
+scene.background = new THREE.Color(0x04050d);
+scene.fog = new THREE.Fog(0x04050d, 16, 38);
 
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -23,9 +23,9 @@ camera.position.set(0, 4.4, 15.2);
 camera.lookAt(0, 4.1, -0.4);
 
 // ---------- lights ----------
-scene.add(new THREE.HemisphereLight(0x9db8e8, 0x2a1f45, 0.45)); // relleno tenue
+scene.add(new THREE.HemisphereLight(0x3550a0, 0x0d0a20, 0.4)); // relleno tenue frío
 
-const key = new THREE.DirectionalLight(0xffd9a0, 2.4);   // sol cálido de feria
+const key = new THREE.DirectionalLight(0xbfd6ff, 1.6);   // luz fría de noche
 key.position.set(6, 10, 7);
 key.castShadow = true;
 key.shadow.mapSize.set(2048, 2048);
@@ -34,20 +34,20 @@ key.shadow.camera.right = key.shadow.camera.top = 9;
 key.shadow.bias = -0.0004;
 scene.add(key);
 
-const marquee = new THREE.PointLight(0xff4fd8, 12, 14, 1.8);
+const marquee = new THREE.PointLight(0xff2fd0, 18, 16, 1.8);   // neón rosa
 marquee.position.set(0, 5.6, 3.2);
 scene.add(marquee);
 
-const innerGlow = new THREE.PointLight(0x66ccff, 10, 12, 1.8);
+const innerGlow = new THREE.PointLight(0x22e6ff, 16, 13, 1.8); // neón cyan interior
 innerGlow.position.set(0, 4.2, 0.5);
 scene.add(innerGlow);
 
-const fill = new THREE.PointLight(0xffd9a0, 8, 12, 2);
+const fill = new THREE.PointLight(0xff2fd0, 9, 12, 2);          // rebote rosa
 fill.position.set(-3, 3, 2.5);
 scene.add(fill);
 
-// spotlight onto the toy pile
-const spot = new THREE.SpotLight(0xffffff, 60, 20, Math.PI / 5, 0.45, 1.4);
+// spotlight frío sobre la pila
+const spot = new THREE.SpotLight(0xcfe8ff, 55, 20, Math.PI / 5, 0.45, 1.4);
 spot.position.set(0, 7.7, 0.8);
 spot.target.position.set(0, 1, 0);
 spot.castShadow = true;
@@ -93,19 +93,20 @@ function woodTex(base = '#c2185b') {
 }
 const brushed = brushedTex();
 const brushedRough = brushedTex(2);
-const woodPink = woodTex('#d4145a');
-const woodDark = woodTex('#2a2f3d');
+const woodPink = woodTex('#15151d');   // gabinete negro laqueado
+const woodDark = woodTex('#0d0f1a');
 
 // ---------- materials ----------
 const M = {
   metal: new THREE.MeshStandardMaterial({ color: 0x9aa7b8, metalness: 0.9, roughness: 0.28, roughnessMap: brushedRough }),
   darkMetal: new THREE.MeshStandardMaterial({ color: 0x2a2f3d, metalness: 0.75, roughness: 0.4, roughnessMap: brushedRough }),
-  pink: new THREE.MeshStandardMaterial({ map: woodPink, metalness: 0.15, roughness: 0.5 }),          // madera pintada
+  pink: new THREE.MeshStandardMaterial({ map: woodPink, color: 0x8a8aa0, metalness: 0.55, roughness: 0.35 }), // gabinete negro brillante
   chrome: new THREE.MeshStandardMaterial({ color: 0xf0f0f0, metalness: 1, roughness: 0.12, roughnessMap: brushedRough }),
   glass: new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0, roughness: 0.05, transmission: 1, thickness: 0.25, transparent: true, opacity: 0.22 }),
-  floor: new THREE.MeshStandardMaterial({ color: 0x120e2c, roughness: 0.22, metalness: 0.4 }),
-  back: new THREE.MeshStandardMaterial({ map: woodDark, color: 0x9a8fd0, roughness: 0.6, metalness: 0.3, emissive: 0x0c0624, emissiveIntensity: 0.7 }),
-  neon: new THREE.MeshStandardMaterial({ color: 0x30f6ff, emissive: 0x30f6ff, emissiveIntensity: 2.4 }),
+  floor: new THREE.MeshStandardMaterial({ color: 0x0a0a16, roughness: 0.15, metalness: 0.6 }),
+  back: new THREE.MeshStandardMaterial({ map: woodDark, color: 0x4a4f7a, roughness: 0.5, metalness: 0.4, emissive: 0x05051a, emissiveIntensity: 0.8 }),
+  neonPink: new THREE.MeshStandardMaterial({ color: 0xff2fd0, emissive: 0xff2fd0, emissiveIntensity: 3 }),
+  neon: new THREE.MeshStandardMaterial({ color: 0x22e6ff, emissive: 0x22e6ff, emissiveIntensity: 3 }),
   cable: new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.85, metalness: 0.1 }),       // goma/cable
   claw: new THREE.MeshStandardMaterial({ color: 0xd8dee9, metalness: 0.95, roughness: 0.18, map: brushed, roughnessMap: brushedRough }), // metal cepillado
   rubber: new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.95, metalness: 0 }),        // ventosas de goma
@@ -134,13 +135,19 @@ box(W + 0.6, 0.9, D + 0.6, M.pink, 0, H + 0.2, 0);           // roof
 const mc = document.createElement('canvas'); mc.width = 512; mc.height = 160;
 const mctx = mc.getContext('2d');
 const grad = mctx.createLinearGradient(0, 0, 0, 160);
-grad.addColorStop(0, '#2b0f4f'); grad.addColorStop(1, '#12082a');
+grad.addColorStop(0, '#0a0618'); grad.addColorStop(1, '#050310');
 mctx.fillStyle = grad; mctx.fillRect(0, 0, 512, 160);
-mctx.font = '900 92px system-ui, sans-serif';
+// borde neón
+mctx.strokeStyle = '#ff2fd0'; mctx.lineWidth = 6; mctx.shadowColor = '#ff2fd0'; mctx.shadowBlur = 22;
+mctx.strokeRect(10, 10, 492, 140);
+mctx.font = '900 58px system-ui, sans-serif';
 mctx.textAlign = 'center'; mctx.textBaseline = 'middle';
-mctx.shadowColor = '#ff2d96'; mctx.shadowBlur = 30;
-mctx.fillStyle = '#ffd4ec';
-mctx.fillText('★ CLAW ★', 256, 84);
+mctx.shadowColor = '#ff2fd0'; mctx.shadowBlur = 26;
+mctx.fillStyle = '#ffd8f2';
+mctx.fillText('DREAM', 256, 52);
+mctx.shadowColor = '#22e6ff'; mctx.shadowBlur = 26;
+mctx.fillStyle = '#d8faff';
+mctx.fillText('CATCHER', 256, 112);
 const mTex = new THREE.CanvasTexture(mc);
 mTex.colorSpace = THREE.SRGBColorSpace;
 const sign = new THREE.Mesh(
@@ -149,8 +156,8 @@ const sign = new THREE.Mesh(
 );
 sign.position.set(0, H + 0.2, D / 2 + 0.32); cabinet.add(sign);
 // bulbs along the sign
-const bulbGeo = new THREE.SphereGeometry(0.09, 10, 8);
-const bulbMat = new THREE.MeshStandardMaterial({ color: 0xfff3b0, emissive: 0xffc63f, emissiveIntensity: 3 });
+const bulbGeo = new THREE.SphereGeometry(0.08, 10, 8);
+const bulbMat = new THREE.MeshStandardMaterial({ color: 0xffe0f6, emissive: 0xff2fd0, emissiveIntensity: 3 });
 for (let i = 0; i <= 12; i++) {
   const b = new THREE.Mesh(bulbGeo, bulbMat);
   b.position.set(-W / 2 + 0.5 + i * (W - 1) / 12, H + 0.85, D / 2 + 0.35);
@@ -172,9 +179,14 @@ floor.position.y = 0.78; floor.receiveShadow = true;
 cabinet.add(floor);
 // back wall + neon strips
 box(W - 0.9, H - 1.4, 0.12, M.back, 0, H / 2 + 0.15, -D / 2 - 0.02);
-for (const s of [-1, 1])
-  box(0.08, H - 1.6, 0.08, M.neon, s * (W / 2 - 0.28), H / 2 + 0.15, D / 2 - 0.28);
-box(W - 1, 0.08, 0.08, M.neon, 0, H - 0.75, D / 2 - 0.28);
+for (const s of [-1, 1]) {
+  box(0.08, H - 1.6, 0.08, M.neonPink, s * (W / 2 - 0.28), H / 2 + 0.15, D / 2 - 0.28);
+  box(0.08, H - 1.6, 0.08, M.neon, s * (W / 2 - 0.28), H / 2 + 0.15, -D / 2 + 0.28);
+}
+box(W - 1, 0.08, 0.08, M.neonPink, 0, H - 0.75, D / 2 - 0.28);
+box(W - 1, 0.08, 0.08, M.neon, 0, H - 0.75, -D / 2 + 0.28);
+box(0.08, 0.08, D - 1, M.neon, -W / 2 + 0.28, H - 0.75, 0);
+box(0.08, 0.08, D - 1, M.neonPink, W / 2 - 0.28, H - 0.75, 0);
 // glass panes
 const glassFront = new THREE.Mesh(new THREE.BoxGeometry(W - 0.9, H - 1.4, 0.08), M.glass);
 glassFront.position.set(0, H / 2 + 0.15, D / 2 + 0.02); cabinet.add(glassFront);
@@ -191,7 +203,7 @@ box(1.6, 0.5, 1.6, M.darkMetal, W / 2 - 1.2, 1.0, D / 2 - 1.2);
 
 // ---------- toys ----------
 const toys = [];
-const toyColors = [0xff3b3b, 0xff9500, 0x00c2ff, 0x2ee66b, 0x9b30ff, 0xff5e3a, 0x3d7bff, 0xff2fb3, 0xffe23f, 0x00e0b8];
+const toyColors = [0xff2fb3, 0x22e6ff, 0x9b30ff, 0xff5e8a, 0x3d7bff, 0xff3b6b, 0x00e0b8, 0xb06bff, 0xff7ac8, 0x66f0ff];
 const rand = (a, b) => a + Math.random() * (b - a);
 
 function makeToy(i) {
