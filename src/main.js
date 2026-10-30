@@ -55,18 +55,60 @@ spot.shadow.mapSize.set(1024, 1024);
 spot.shadow.bias = -0.0004;
 scene.add(spot, spot.target);
 
+// ---------- procedural PBR textures ----------
+// brushed metal: horizontal streaks in roughness map
+function brushedTex(reps = 4) {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const x = c.getContext('2d');
+  x.fillStyle = '#888'; x.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 900; i++) {
+    const y = Math.random() * 256, w = 20 + Math.random() * 200;
+    const v = 90 + Math.random() * 120 | 0;
+    x.strokeStyle = `rgba(${v},${v},${v},0.35)`;
+    x.lineWidth = Math.random() < 0.2 ? 2 : 1;
+    x.beginPath(); x.moveTo(Math.random() * 256 - 100, y); x.lineTo(Math.random() * 256 + w, y + (Math.random() - 0.5) * 2); x.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(reps, reps);
+  return t;
+}
+// painted wood: grain lines + slight color variation
+function woodTex(base = '#c2185b') {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const x = c.getContext('2d');
+  x.fillStyle = base; x.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 60; i++) {
+    const y = Math.random() * 256;
+    x.strokeStyle = `rgba(0,0,0,${0.04 + Math.random() * 0.09})`;
+    x.lineWidth = 1 + Math.random() * 3;
+    x.beginPath();
+    x.moveTo(0, y);
+    x.bezierCurveTo(85, y + (Math.random() - 0.5) * 8, 170, y + (Math.random() - 0.5) * 8, 256, y);
+    x.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const brushed = brushedTex();
+const brushedRough = brushedTex(2);
+const woodPink = woodTex('#d4145a');
+const woodDark = woodTex('#2a2f3d');
+
 // ---------- materials ----------
 const M = {
-  metal: new THREE.MeshStandardMaterial({ color: 0x9aa7b8, metalness: 0.9, roughness: 0.28 }),
-  darkMetal: new THREE.MeshStandardMaterial({ color: 0x2a2f3d, metalness: 0.75, roughness: 0.4 }),
-  pink: new THREE.MeshStandardMaterial({ color: 0xd4145a, metalness: 0.35, roughness: 0.3 }),
-  chrome: new THREE.MeshStandardMaterial({ color: 0xf0f0f0, metalness: 1, roughness: 0.12 }),
+  metal: new THREE.MeshStandardMaterial({ color: 0x9aa7b8, metalness: 0.9, roughness: 0.28, roughnessMap: brushedRough }),
+  darkMetal: new THREE.MeshStandardMaterial({ color: 0x2a2f3d, metalness: 0.75, roughness: 0.4, roughnessMap: brushedRough }),
+  pink: new THREE.MeshStandardMaterial({ map: woodPink, metalness: 0.15, roughness: 0.5 }),          // madera pintada
+  chrome: new THREE.MeshStandardMaterial({ color: 0xf0f0f0, metalness: 1, roughness: 0.12, roughnessMap: brushedRough }),
   glass: new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0, roughness: 0.05, transmission: 1, thickness: 0.25, transparent: true, opacity: 0.22 }),
   floor: new THREE.MeshStandardMaterial({ color: 0x120e2c, roughness: 0.22, metalness: 0.4 }),
-  back: new THREE.MeshStandardMaterial({ color: 0x181040, roughness: 0.6, metalness: 0.3, emissive: 0x0c0624, emissiveIntensity: 0.7 }),
+  back: new THREE.MeshStandardMaterial({ map: woodDark, color: 0x9a8fd0, roughness: 0.6, metalness: 0.3, emissive: 0x0c0624, emissiveIntensity: 0.7 }),
   neon: new THREE.MeshStandardMaterial({ color: 0x30f6ff, emissive: 0x30f6ff, emissiveIntensity: 2.4 }),
-  cable: new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 }),
-  claw: new THREE.MeshStandardMaterial({ color: 0xd8dee9, metalness: 0.95, roughness: 0.18 }),
+  cable: new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.85, metalness: 0.1 }),       // goma/cable
+  claw: new THREE.MeshStandardMaterial({ color: 0xd8dee9, metalness: 0.95, roughness: 0.18, map: brushed, roughnessMap: brushedRough }), // metal cepillado
+  rubber: new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.95, metalness: 0 }),        // ventosas de goma
 };
 
 // ---------- cabinet ----------
@@ -204,7 +246,7 @@ for (let i = 0; i < 30; i++) makeToy(i);
 const carriage = new THREE.Group();          // moves XZ
 carriage.position.y = H - 0.55;
 scene.add(carriage);
-const carBody = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.35, 0.9), M.darkMetal);
+const carBody = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.35, 0.9), M.metal); // partes móviles: otra rugosidad
 carBody.castShadow = true; carriage.add(carBody);
 
 const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1, 8), M.cable);
@@ -226,6 +268,8 @@ for (let i = 0; i < 3; i++) {
   upper.position.y = -0.32; prong.add(upper);
   const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.015, 0.45, 8), M.claw);
   tip.position.set(0.1, -0.75, 0); tip.rotation.z = -0.5; prong.add(tip);
+  const pad = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), M.rubber); // ventosa de goma
+  pad.position.set(0.2, -0.95, 0); prong.add(pad);
   prong.position.x = 0.26;
   prong.children.forEach(c => c.castShadow = true);
   prongs.push(prong);
