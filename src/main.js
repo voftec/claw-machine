@@ -349,6 +349,7 @@ for (const [id, code] of [['btnL','ArrowLeft'],['btnR','ArrowRight'],['btnU','Ar
   el.addEventListener('pointercancel', off);
 }
 document.getElementById('btnDrop').addEventListener('pointerdown', e => { e.preventDefault(); drop(); });
+document.getElementById('btnReset').addEventListener('click', () => location.reload());
 
 // ---------- update ----------
 const clock = new THREE.Clock();
@@ -448,6 +449,7 @@ function tick() {
     } else {
       state = 'release'; prongTarget = 1; setMsg('🎉 ¡Premio!');
       prizes++; prizeEl.textContent = prizes;
+      prizeEl.classList.add('pop'); setTimeout(() => prizeEl.classList.remove('pop'), 200);
     }
   } else if (state === 'release') {
     if (prongOpen > 0.9 && heldToy) {

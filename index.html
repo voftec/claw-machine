@@ -9,11 +9,20 @@
   html,body { height:100%; overflow:hidden; background:#0b0e1a; font-family:system-ui,sans-serif; }
   #game { position:fixed; inset:0; width:100%; height:100%; touch-action:none; }
   #hud { position:fixed; top:10px; left:0; right:0; display:flex; justify-content:space-between; padding:0 14px; pointer-events:none; color:#fff; }
-  #msg { background:rgba(10,10,25,.65); padding:8px 14px; border-radius:12px; font-size:14px; font-weight:600; }
-  #prizeBox { background:rgba(10,10,25,.65); padding:8px 14px; border-radius:12px; font-size:14px; font-weight:600; }
+  #msg { background:rgba(10,10,25,.7); padding:12px 20px; border-radius:16px; font-size:20px; font-weight:800; letter-spacing:.3px; }
+  #prizeBox { background:rgba(10,10,25,.7); padding:12px 18px; border-radius:16px; font-size:20px; font-weight:800; display:flex; align-items:center; gap:8px; }
+  #prizes { display:inline-block; font-size:26px; transition:transform .18s ease; }
+  #prizes.pop { transform:scale(1.6); }
+  #btnReset {
+    position:fixed; top:64px; right:14px; pointer-events:auto;
+    border:0; border-radius:12px; padding:10px 14px; font-size:15px; font-weight:700; color:#fff;
+    background:rgba(255,255,255,.12); backdrop-filter:blur(6px);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);
+  }
+  #btnReset:active { background:rgba(255,255,255,.3); }
   #pad { position:fixed; bottom:16px; left:14px; display:grid; grid-template-columns:repeat(3,58px); grid-template-rows:repeat(3,58px); gap:6px; }
   #pad button, #btnDrop {
-    border:0; border-radius:14px; font-size:22px; font-weight:800; color:#fff;
+    border:0; border-radius:14px; font-size:26px; font-weight:800; color:#fff;
     background:rgba(255,255,255,.12); backdrop-filter:blur(6px);
     box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);
   }
@@ -29,6 +38,7 @@
 <body>
 <canvas id="game"></canvas>
 <div id="hud"><div id="msg"></div><div id="prizeBox">🏆 <span id="prizes">0</span></div></div>
+<button id="btnReset">↺ Reiniciar</button>
 <div id="pad">
   <button id="btnU">▲</button><button id="btnL">◀</button>
   <button id="btnD">▼</button><button id="btnR">▶</button>
