@@ -10,7 +10,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
+renderer.toneMappingExposure = 0.9;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 const scene = new THREE.Scene();
@@ -25,9 +25,9 @@ camera.position.set(0.8, 6.6, 15.4);
 camera.lookAt(0, 5.6, -0.2);
 
 // ---------- lights ----------
-scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x30302a, 0.8)); // relleno estudio
+scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x1a1a18, 0.55)); // relleno tenue
 
-const key = new THREE.DirectionalLight(0xfff1d6, 2.2);   // luz cálida de salón
+const key = new THREE.DirectionalLight(0xfff1d6, 1.1);   // luz cálida suave
 key.position.set(6, 12, 8);
 key.castShadow = true;
 key.shadow.mapSize.set(2048, 2048);
@@ -36,20 +36,12 @@ key.shadow.camera.right = key.shadow.camera.top = 9;
 key.shadow.bias = -0.0004;
 scene.add(key);
 
-const marquee = new THREE.PointLight(0xffc23f, 14, 12, 1.8);   // glow cálido del cartel
-marquee.position.set(0, 10.4, 2.6);
-scene.add(marquee);
-
-const innerGlow = new THREE.PointLight(0xffffff, 10, 8, 1.8);  // luz interior de la cabina
+const innerGlow = new THREE.PointLight(0xfff4dd, 5, 7, 1.9);  // luz interior suave
 innerGlow.position.set(0, 6.6, 0);
 scene.add(innerGlow);
 
-const fill = new THREE.PointLight(0xffd9a0, 6, 12, 2);          // rebote cálido
-fill.position.set(-3, 5, 3);
-scene.add(fill);
-
-// spotlight sobre la pila de premios
-const spot = new THREE.SpotLight(0xfff6e0, 40, 14, Math.PI / 5, 0.45, 1.4);
+// spotlight suave sobre la pila de premios
+const spot = new THREE.SpotLight(0xfff6e0, 18, 12, Math.PI / 4.5, 0.7, 1.6);
 spot.position.set(0, 8.5, 0.6);
 spot.target.position.set(0, 4.5, 0);
 spot.castShadow = true;
@@ -149,10 +141,23 @@ machine.scale.setScalar(MACHINE_SCALE);
 machine.traverse(o => {
   if (o.isMesh) {
     o.castShadow = o.receiveShadow = true;
-    if (o.material && 'envMapIntensity' in o.material) o.material.envMapIntensity = 0.55;
+    if (o.material && 'envMapIntensity' in o.material) {
+      o.material.envMapIntensity = 0.05;                 // matar reflejos plásticos
+      if ('roughness' in o.material) o.material.roughness = Math.min(1, o.material.roughness * 1.8 + 0.2);
+      if ('metalness' in o.material) o.material.metalness = Math.max(0, o.material.metalness * 0.6);
+    }
   }
 });
 scene.add(machine);
+
+// piso oscuro para que la máquina no flote en el vacío
+const ground = new THREE.Mesh(
+  new THREE.CircleGeometry(30, 48),
+  new THREE.MeshStandardMaterial({ color: 0x0c0c12, roughness: 0.9, metalness: 0 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
 
 // riel superior decorativo dentro de la cabina (acompaña el movimiento X)
 const crossRail = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.08, 2.2), M.darkMetal);
