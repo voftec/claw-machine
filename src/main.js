@@ -334,6 +334,10 @@ document.getElementById('btnDrop').addEventListener('pointerdown', e => { e.prev
 // ---------- update ----------
 const clock = new THREE.Clock();
 let grabTimer = 0;
+let dropT = 0, dropFrom = 0.9, dropTo = 0;
+let squeezeTimer = 0;
+
+const easeInOutCubic = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
 function tick() {
   const dt = Math.min(clock.getDelta(), 0.05);
@@ -369,13 +373,21 @@ function tick() {
 
   // state machine
   if (state === 'drop') {
-    spring.target = HEAD_Y - FLOOR_Y; // reach floor
-    if (clawWorldY <= FLOOR_Y + 0.08 && Math.abs(spring.vel) < 0.6) {
+    // bajada con easing suave (no lineal)
+    dropT = Math.min(1, dropT + dt / 1.5);
+    spring.target = dropFrom + (dropTo - dropFrom) * easeInOutCubic(dropT);
+    if (dropT >= 1 && clawWorldY <= FLOOR_Y + 0.08 && Math.abs(spring.vel) < 0.6) {
       state = 'grab'; grabTimer = 0; prongTarget = 0; setMsg('¡Cerrando!');
     }
   } else if (state === 'grab') {
     grabTimer += dt;
     if (grabTimer > 0.9) {
+      // pausa de apretón antes de subir
+      state = 'squeeze'; squeezeTimer = 0;
+    }
+  } else if (state === 'squeeze') {
+    squeezeTimer += dt;
+    if (squeezeTimer > 0.5) {
       // pick nearest toy under claw
       let best = null, bd = 1e9;
       for (const t of toys) {
