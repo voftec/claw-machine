@@ -325,9 +325,53 @@ const prizeEl = document.getElementById('prizes');
 
 function setMsg(t) { msg.textContent = t; }
 
+// ---------- audio (WebAudio, sin archivos) ----------
+let actx = null, motorOsc = null, motorGain = null;
+function audio() { return actx ??= new (window.AudioContext || window.webkitAudioContext)(); }
+function motorStart() {
+  try {
+    const a = audio(); if (a.state === 'suspended') a.resume();
+    motorOsc = a.createOscillator(); motorOsc.type = 'sawtooth'; motorOsc.frequency.value = 55;
+    const lfo = a.createOscillator(); lfo.frequency.value = 9;
+    const lfoG = a.createGain(); lfoG.gain.value = 6;
+    lfo.connect(lfoG); lfoG.connect(motorOsc.frequency); lfo.start();
+    motorGain = a.createGain();
+    motorGain.gain.setValueAtTime(0, a.currentTime);
+    motorGain.gain.linearRampToValueAtTime(0.05, a.currentTime + 0.15);
+    const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 220;
+    motorOsc.connect(lp); lp.connect(motorGain); motorGain.connect(a.destination);
+    motorOsc.start();
+    motorOsc._lfo = lfo;
+  } catch {}
+}
+function motorStop() {
+  if (!motorOsc) return;
+  try {
+    const a = audio();
+    motorGain.gain.linearRampToValueAtTime(0, a.currentTime + 0.12);
+    setTimeout(() => { motorOsc.stop(); motorOsc._lfo.stop(); }, 200);
+  } catch {}
+  motorOsc = null; motorGain = null;
+}
+function ding() {
+  try {
+    const a = audio(); if (a.state === 'suspended') a.resume();
+    const t = a.currentTime;
+    for (const [f, d] of [[880, 0], [1318.5, 0.09]]) {
+      const o = a.createOscillator(); o.type = 'sine'; o.frequency.value = f;
+      const g = a.createGain();
+      g.gain.setValueAtTime(0.18, t + d);
+      g.gain.exponentialRampToValueAtTime(0.001, t + d + 0.7);
+      o.connect(g); g.connect(a.destination);
+      o.start(t + d); o.stop(t + d + 0.75);
+    }
+  } catch {}
+}
+
 function drop() {
   if (state !== 'idle') return;
   state = 'drop';
+  motorStart();
   prongTarget = 1;
   setMsg('¡Bajando!');
 }
@@ -403,6 +447,7 @@ function tick() {
     grabTimer += dt;
     if (grabTimer > 0.9) {
       // pausa de apretón antes de subir
+      motorStop();
       state = 'squeeze'; squeezeTimer = 0;
     }
   } else if (state === 'squeeze') {
@@ -423,6 +468,7 @@ function tick() {
           heldToy = best;
           toys.splice(toys.indexOf(best), 1);
           burstSparks(best.position.x, best.position.y + 0.4, best.position.z);
+          ding();
           state = 'lift'; spring.target = 0.9; setMsg('¡Atrapado!');
         } else {
           state = 'lift'; spring.target = 0.9; setMsg('¡Se escapó!');
