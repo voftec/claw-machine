@@ -286,6 +286,25 @@ for (let i = 0; i < 3; i++) {
   prongs.push(prong);
 }
 
+// ---------- partículas (motas de brillo al agarrar) ----------
+const sparkGeo = new THREE.SphereGeometry(0.035, 6, 5);
+const sparkMat = new THREE.MeshBasicMaterial({ color: 0xfff0b8, transparent: true });
+const sparks = [];
+for (let i = 0; i < 4; i++) {
+  const s = new THREE.Mesh(sparkGeo, sparkMat.clone());
+  s.visible = false; scene.add(s);
+  sparks.push({ mesh: s, vel: new THREE.Vector3(), life: 0 });
+}
+function burstSparks(x, y, z) {
+  for (const s of sparks) {
+    s.mesh.position.set(x + rand(-0.2, 0.2), y + rand(-0.1, 0.15), z + rand(-0.2, 0.2));
+    s.vel.set(rand(-0.7, 0.7), rand(1.2, 2.2), rand(-0.7, 0.7));
+    s.life = rand(0.5, 0.9);
+    s.mesh.visible = true;
+    s.mesh.material.opacity = 1;
+  }
+}
+
 // ---------- spring model ----------
 // cable length follows target with damped spring => overshoot/wobble
 const spring = { len: 0.9, vel: 0, target: 0.9, k: 90, damp: 7 };
@@ -402,6 +421,7 @@ function tick() {
         if (Math.random() < chance) {
           heldToy = best;
           toys.splice(toys.indexOf(best), 1);
+          burstSparks(best.position.x, best.position.y + 0.4, best.position.z);
           state = 'lift'; spring.target = 0.9; setMsg('¡Atrapado!');
         } else {
           state = 'lift'; spring.target = 0.9; setMsg('¡Se escapó!');
@@ -446,6 +466,16 @@ function tick() {
   for (const t of scene.children) if (t.userData && t.userData.falling) {
     t.position.y -= 6 * dt;
     if (t.position.y < 0.3) t.userData.falling = false;
+  }
+
+  // partículas
+  for (const s of sparks) {
+    if (s.life <= 0) continue;
+    s.life -= dt;
+    s.mesh.position.addScaledVector(s.vel, dt);
+    s.vel.y -= 2.5 * dt;
+    s.mesh.material.opacity = Math.max(0, s.life);
+    if (s.life <= 0) s.mesh.visible = false;
   }
 
   // beacon: parpadea siempre que la garra está activa (no idle)
