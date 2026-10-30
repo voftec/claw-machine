@@ -23,9 +23,9 @@ camera.position.set(0, 4.4, 15.2);
 camera.lookAt(0, 4.1, -0.4);
 
 // ---------- lights ----------
-scene.add(new THREE.HemisphereLight(0xbcd4ff, 0x3a2a55, 0.9));
+scene.add(new THREE.HemisphereLight(0x9db8e8, 0x2a1f45, 0.45)); // relleno tenue
 
-const key = new THREE.DirectionalLight(0xfff2dd, 2.2);
+const key = new THREE.DirectionalLight(0xffd9a0, 2.4);   // sol cálido de feria
 key.position.set(6, 10, 7);
 key.castShadow = true;
 key.shadow.mapSize.set(2048, 2048);
@@ -257,6 +257,17 @@ carriage.add(clawRoot);
 const head = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.34, 0.3, 20), M.claw);
 head.castShadow = true; clawRoot.add(head);
 
+// luz roja parpadeante sobre la garra (marca que está activa)
+const beacon = new THREE.PointLight(0xff2222, 0, 4, 2);
+beacon.position.y = 0.35;
+clawRoot.add(beacon);
+const beaconBulb = new THREE.Mesh(
+  new THREE.SphereGeometry(0.06, 10, 8),
+  new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xff2222, emissiveIntensity: 0 })
+);
+beaconBulb.position.y = 0.32;
+clawRoot.add(beaconBulb);
+
 const prongs = [];
 for (let i = 0; i < 3; i++) {
   const pivot = new THREE.Group();
@@ -424,6 +435,12 @@ function tick() {
     t.position.y -= 6 * dt;
     if (t.position.y < 0.3) t.userData.falling = false;
   }
+
+  // beacon: parpadea siempre que la garra está activa (no idle)
+  const active = state !== 'idle';
+  const blink = active ? (Math.sin(clock.elapsedTime * 9) > 0 ? 1 : 0.12) : 0.35;
+  beacon.intensity = blink * 6;
+  beaconBulb.material.emissiveIntensity = blink * 3;
 
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
